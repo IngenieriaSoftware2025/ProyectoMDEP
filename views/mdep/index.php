@@ -10,9 +10,14 @@
                 <div class="row mb-3">
                     <div class="col-12 d-flex justify-content-between align-items-center">
                         <h3>DEPENDENCIAS REGISTRADAS</h3>
-                        <button class="btn btn-success" id="BtnNuevaDependencia">
-                            <i class="bi bi-plus-circle me-1"></i>Nueva Dependencia
-                        </button>
+                        <div>
+                            <button class="btn btn-info me-2" id="BtnVerUbicaciones">
+                                <i class="bi bi-geo-alt me-1"></i>Ver Ubicaciones
+                            </button>
+                            <button class="btn btn-success" id="BtnNuevaDependencia">
+                                <i class="bi bi-plus-circle me-1"></i>Nueva Dependencia
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -26,7 +31,8 @@
     </div>
 </div>
 
-<!-- Modal para Crear/Editar Dependencia -->
+<script src="<?= asset('build/js/mdep/index.js') ?>"></script>
+
 <div class="modal fade" id="modalDependencia" tabindex="-1" aria-labelledby="modalDependenciaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -62,17 +68,6 @@
                                 <option value="O">O - Operativo</option>
                                 <option value="D">D - Docencia</option>
                             </select>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="dep_precio" class="form-label">PRECIO</label>
-                            <input type="text" class="form-control" id="dep_precio" name="dep_precio" placeholder="Precio" maxlength="1">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="dep_ejto" class="form-label">EJÉRCITO</label>
-                            <input type="text" class="form-control" id="dep_ejto" name="dep_ejto" placeholder="Ejército" maxlength="1">
                         </div>
                     </div>
 

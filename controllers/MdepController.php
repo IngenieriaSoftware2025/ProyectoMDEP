@@ -2,7 +2,7 @@
 
 namespace Controllers;
 
-use phpseclib\Net\SFTP;
+use phpseclib3\Net\SFTP;
 use Exception;
 use Model\ActiveRecord;
 use MVC\Router;
@@ -18,7 +18,7 @@ class MdepController extends ActiveRecord{
     public static function guardarAPI()
     {
         header('Content-Type: application/json');
-    
+
         $_POST['dep_desc_lg'] = trim(htmlspecialchars($_POST['dep_desc_lg']));
         $_POST['dep_desc_md'] = trim(htmlspecialchars($_POST['dep_desc_md']));
         $_POST['dep_desc_ct'] = trim(htmlspecialchars($_POST['dep_desc_ct']));
@@ -27,37 +27,37 @@ class MdepController extends ActiveRecord{
         $_POST['dep_longitud'] = trim(htmlspecialchars($_POST['dep_longitud'] ?? ''));
         $_POST['dep_ruta_logo'] = trim(htmlspecialchars($_POST['dep_ruta_logo'] ?? ''));
         
-         // Campos con valores por defecto
         $_POST['dep_precio'] = '1';
         $_POST['dep_ejto'] = 'N';
 
-        // Validaciones campos obligatorios
-        if (strlen(empty($_POST['dep_desc_lg'])) < 10) {
+
+        if (empty($_POST['dep_desc_lg']) || strlen($_POST['dep_desc_lg']) < 10) {
             http_response_code(400);
             echo json_encode([
                 'codigo' => 0,
-                'mensaje' => 'La descripción larga debe tener más de 1 carácter'
+                'mensaje' => 'La descripción larga debe tener más de 10 caracteres'
             ]);
             exit;
         }
         
-        if (strlen(empty($_POST['dep_desc_md'])) < 5) {
+        if (empty($_POST['dep_desc_md']) || strlen($_POST['dep_desc_md']) < 5) {
             http_response_code(400);
             echo json_encode([
                 'codigo' => 0,
-                'mensaje' => 'La descripción mediana debe tener más de 1 carácter'
+                'mensaje' => 'La descripción mediana debe tener más de 5 caracteres'
             ]);
             exit;
         }
         
-        if (strlen(empty($_POST['dep_desc_ct'])) < 3) {
+        if (empty($_POST['dep_desc_ct']) || strlen($_POST['dep_desc_ct']) < 3) {
             http_response_code(400);
             echo json_encode([
                 'codigo' => 0,
-                'mensaje' => 'La descripción corta debe tener más de 1 carácter'
+                'mensaje' => 'La descripción corta debe tener más de 3 caracteres'
             ]);
             exit;
         }
+
         if (empty($_POST['dep_clase'])) {
             http_response_code(400);
             echo json_encode(['codigo' => 0, 'mensaje' => 'Clase es requerida']);
@@ -65,7 +65,6 @@ class MdepController extends ActiveRecord{
         }
 
         try {
-            // Subir imagen si existe
             if (isset($_FILES['dep_imagen']) && $_FILES['dep_imagen']['error'] === UPLOAD_ERR_OK) {
                 $rutaImagen = self::subirImagen($_FILES['dep_imagen']);
                 if ($rutaImagen) {
@@ -97,7 +96,7 @@ class MdepController extends ActiveRecord{
             ]);
         }
     }
-    
+        
     public static function buscarAPI()
     {
         header('Content-Type: application/json');
@@ -131,12 +130,14 @@ class MdepController extends ActiveRecord{
         $_POST['dep_desc_md'] = trim(htmlspecialchars($_POST['dep_desc_md']));
         $_POST['dep_desc_ct'] = trim(htmlspecialchars($_POST['dep_desc_ct']));
         $_POST['dep_clase'] = trim(htmlspecialchars($_POST['dep_clase']));
-        $_POST['dep_precio'] = trim(htmlspecialchars($_POST['dep_precio'] ?? ''));
-        $_POST['dep_ejto'] = trim(htmlspecialchars($_POST['dep_ejto'] ?? ''));
         $_POST['dep_latitud'] = trim(htmlspecialchars($_POST['dep_latitud'] ?? ''));
         $_POST['dep_longitud'] = trim(htmlspecialchars($_POST['dep_longitud'] ?? ''));
 
+        $_POST['dep_precio'] = '1';
+        $_POST['dep_ejto'] = 'N';
+
         try {
+            /** @var Mdep $dependencia */
             $dependencia = Mdep::find($id);
             if (!$dependencia) {
                 http_response_code(400);
@@ -144,7 +145,6 @@ class MdepController extends ActiveRecord{
                 return;
             }
 
-            // Subir nueva imagen si existe
             if (isset($_FILES['dep_imagen']) && $_FILES['dep_imagen']['error'] === UPLOAD_ERR_OK) {
                 $rutaImagen = self::subirImagen($_FILES['dep_imagen']);
                 if ($rutaImagen) {
@@ -191,6 +191,7 @@ class MdepController extends ActiveRecord{
         }
 
         try {
+            /** @var Mdep $dependencia */
             $dependencia = Mdep::find($id);
             if (!$dependencia) {
                 http_response_code(400);
@@ -198,10 +199,9 @@ class MdepController extends ActiveRecord{
                 return;
             }
 
-            // Generar PDF
             $rutaPDF = self::generarPDF('DESHABILITACION', $dependencia->dep_desc_lg, $justificacion);
             
-            // Deshabilitar
+            
             Mdep::DeshabilitarDependencia($id);
 
             http_response_code(200);
@@ -236,6 +236,7 @@ class MdepController extends ActiveRecord{
         }
 
         try {
+            /** @var Mdep $dependencia */
             $dependencia = Mdep::find($id);
             if (!$dependencia) {
                 http_response_code(400);
@@ -243,10 +244,9 @@ class MdepController extends ActiveRecord{
                 return;
             }
 
-            // Generar PDF
             $rutaPDF = self::generarPDF('HABILITACION', $dependencia->dep_desc_lg, $justificacion);
             
-            // Habilitar
+            
             Mdep::HabilitarDependencia($id);
 
             http_response_code(200);
@@ -306,7 +306,7 @@ class MdepController extends ActiveRecord{
         $rutaTemporal = sys_get_temp_dir() . '/' . $nombrePDF;
         $mpdf->Output($rutaTemporal, 'F');
         
-        // Subir PDF
+        
         $sftpServidor = $_ENV['FILE_SERVER'] ?? '127.0.0.1';
         $sftpUsuario = $_ENV['FILE_USER'] ?? 'ftpuser';
         $sftpPassword = $_ENV['FILE_PASSWORD'] ?? 'ftppassword';
