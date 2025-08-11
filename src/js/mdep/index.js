@@ -12,9 +12,55 @@ const BtnVerUbicaciones = document.getElementById('BtnVerUbicaciones');
 const modalElement = document.getElementById('modalDependencia');
 const modalDependencia = modalElement ? new Modal(modalElement) : null;
 
+const validarCamposObligatorios = () => {
+    const camposObligatorios = [
+        { id: 'dep_desc_lg', nombre: 'Descripción Larga', minimo: 10, maximo: 100 },
+        { id: 'dep_desc_md', nombre: 'Descripción Mediana', minimo: 5, maximo: 35 },
+        { id: 'dep_desc_ct', nombre: 'Descripción Corta', minimo: 3, maximo: 15 },
+        { id: 'dep_clase', nombre: 'Clase', minimo: 1, maximo: 1 }
+    ];
+
+    for (let campo of camposObligatorios) {
+        const input = document.getElementById(campo.id);
+        const valor = input.value.trim();
+
+        if (!valor || valor.length < campo.minimo) {
+            Swal.fire({
+                icon: "error",
+                title: "Campo Obligatorio Incompleto",
+                text: `${campo.nombre} debe tener al menos ${campo.minimo} caracteres`,
+                showConfirmButton: true,
+            });
+            input.focus();
+            return false;
+        }
+
+        if (valor.length > campo.maximo) {
+            Swal.fire({
+                icon: "error", 
+                title: "Campo Excede Límite",
+                text: `${campo.nombre} no puede exceder ${campo.maximo} caracteres`,
+                showConfirmButton: true,
+            });
+            input.focus();
+            return false;
+        }
+    }
+    return true;
+};
+
+
 const abrirModalNueva = () => {
     document.getElementById('modalDependenciaLabel').textContent = 'Nueva Dependencia';
     FormDependencias.reset();
+    
+    const depLlaveInput = document.getElementById('dep_llave');
+    if (depLlaveInput) {
+        depLlaveInput.value = '';
+        depLlaveInput.name = ''; 
+        console.log('🔧 Input dep_llave deshabilitado para nueva dependencia');
+    }
+    
     BtnGuardar.classList.remove('d-none');
     BtnModificar.classList.add('d-none');
     modalDependencia.show();
@@ -23,13 +69,25 @@ const abrirModalNueva = () => {
 const abrirModalEditar = (datos) => {
     document.getElementById('modalDependenciaLabel').textContent = 'Modificar Dependencia';
     
-    document.getElementById('dep_llave').value = datos.id;
+    let depLlaveInput = document.getElementById('dep_llave');
+    if (!depLlaveInput) {
+        depLlaveInput = document.createElement('input');
+        depLlaveInput.type = 'hidden';
+        depLlaveInput.id = 'dep_llave';
+        FormDependencias.appendChild(depLlaveInput);
+    }
+    
+    depLlaveInput.name = 'dep_llave';
+    depLlaveInput.value = datos.id;
+    
     document.getElementById('dep_desc_lg').value = datos.descLg;
     document.getElementById('dep_desc_md').value = datos.descMd;
     document.getElementById('dep_desc_ct').value = datos.descCt;
     document.getElementById('dep_clase').value = datos.clase;
     document.getElementById('dep_latitud').value = datos.latitud || '';
     document.getElementById('dep_longitud').value = datos.longitud || '';
+    
+    console.log('Modificar dependencia ID:', datos.id);
     
     BtnGuardar.classList.add('d-none');
     BtnModificar.classList.remove('d-none');
@@ -40,42 +98,50 @@ const GuardarDependencia = async (event) => {
     event.preventDefault();
     BtnGuardar.disabled = true;
 
-    if (!validarFormulario(FormDependencias, ['dep_llave', 'dep_imagen', 'dep_latitud', 'dep_longitud'])) {
-        Swal.fire({
-            icon: "info",
-            title: "Campos requeridos",
-            text: "Complete todos los campos obligatorios marcados con *",
-            showConfirmButton: true,
-        });
+    if (!validarCamposObligatorios()) {
         BtnGuardar.disabled = false;
         return;
     }
 
     const body = new FormData(FormDependencias);
+    body.delete('dep_llave');
+    
     const url = '/ProyectoMDEP/mdep/guardarAPI';
 
     try {
-        const respuesta = await fetch(url, { method: 'POST', body });
+        console.log('=== ENVIANDO REQUEST ===');
+        
+        const respuesta = await fetch(url, { 
+            method: 'POST', 
+            body 
+        });
+        
+        console.log('Response status:', respuesta.status);
+        
         const datos = await respuesta.json();
+        console.log('=== RESPUESTA SERVIDOR ===');
+        console.log(datos);
 
         if (datos.codigo == 1) {
             await Swal.fire({
                 icon: "success",
-                title: "¡Éxito!",
+                title: "¡Dependencia Creada!",
                 text: datos.mensaje,
                 showConfirmButton: true,
             });
             modalDependencia.hide();
             BuscarDependencias();
         } else {
+            console.error('Error del servidor:', datos);
             await Swal.fire({
                 icon: "error",
-                title: "Error",
+                title: "Error al Crear",
                 text: datos.mensaje,
                 showConfirmButton: true,
             });
         }
     } catch (error) {
+        console.error('Error fetch:', error);
         await Swal.fire({
             icon: "error",
             title: "Error de conexión",
@@ -83,12 +149,18 @@ const GuardarDependencia = async (event) => {
             showConfirmButton: true,
         });
     }
+    
     BtnGuardar.disabled = false;
 }
 
 const ModificarDependencia = async (event) => {
     event.preventDefault();
     BtnModificar.disabled = true;
+
+    if (!validarCamposObligatorios()) {
+        BtnModificar.disabled = false;
+        return;
+    }
 
     const body = new FormData(FormDependencias);
     const url = '/ProyectoMDEP/mdep/modificarAPI';
@@ -100,7 +172,7 @@ const ModificarDependencia = async (event) => {
         if (datos.codigo == 1) {
             await Swal.fire({
                 icon: "success",
-                title: "¡Éxito!",
+                title: "¡Dependencia Modificada!",
                 text: datos.mensaje,
                 showConfirmButton: true,
             });
@@ -109,12 +181,13 @@ const ModificarDependencia = async (event) => {
         } else {
             await Swal.fire({
                 icon: "error", 
-                title: "Error",
+                title: "Error al Modificar",
                 text: datos.mensaje,
                 showConfirmButton: true,
             });
         }
     } catch (error) {
+        console.error('Error:', error);
         await Swal.fire({
             icon: "error",
             title: "Error de conexión", 
@@ -126,33 +199,20 @@ const ModificarDependencia = async (event) => {
 }
 
 const BuscarDependencias = async () => {
-    console.log("=== EJECUTANDO BuscarDependencias ===");
-    console.log("datatable object:", datatable);
-    
     try {
         const respuesta = await fetch('/ProyectoMDEP/mdep/buscarAPI');
-        console.log("Respuesta fetch:", respuesta);
-        
         const datos = await respuesta.json();
-        console.log("Datos recibidos:", datos);
 
         if (datos.codigo == 1) {
-            console.log("Código 1 correcto, data:", datos.data);
-            console.log("Limpiando tabla...");
             datatable.clear().draw();
-            
             if (datos.data && datos.data.length > 0) {
-                console.log("Agregando", datos.data.length, "filas");
                 datatable.rows.add(datos.data).draw();
-                console.log("Filas agregadas exitosamente");
-            } else {
-                console.log("No hay datos para mostrar");
             }
         } else {
-            console.log("Error en respuesta:", datos.mensaje);
+            console.error('Error al obtener dependencias:', datos.mensaje);
         }
     } catch (error) {
-        console.log('Error al cargar dependencias:', error);
+        console.error('Error al cargar dependencias:', error);
     }
 }
 
@@ -163,10 +223,11 @@ const DeshabilitarDependencia = async (e) => {
         title: 'Deshabilitar Dependencia',
         text: 'Escriba la justificación para deshabilitar:',
         input: 'textarea',
-        inputPlaceholder: 'Justificación detallada...',
+        inputPlaceholder: 'Justificación detallada (mínimo 10 caracteres)...',
         showCancelButton: true,
         confirmButtonText: 'Deshabilitar',
         cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#d33',
         inputValidator: (value) => {
             if (!value || value.length < 10) {
                 return 'La justificación debe tener al menos 10 caracteres'
@@ -186,14 +247,20 @@ const DeshabilitarDependencia = async (e) => {
             if (datos.codigo == 1) {
                 await Swal.fire({
                     icon: "success",
-                    title: "¡Deshabilitada!",
+                    title: "¡Dependencia Deshabilitada!",
                     text: datos.mensaje,
                     showConfirmButton: true,
                 });
                 BuscarDependencias();
+            } else {
+                throw new Error(datos.mensaje);
             }
         } catch (error) {
-            Swal.fire('Error', 'No se pudo deshabilitar la dependencia', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo deshabilitar la dependencia: ' + error.message
+            });
         }
     }
 }
@@ -205,10 +272,11 @@ const HabilitarDependencia = async (e) => {
         title: 'Habilitar Dependencia',
         text: 'Escriba la justificación para habilitar:',
         input: 'textarea',
-        inputPlaceholder: 'Justificación detallada...',
+        inputPlaceholder: 'Justificación detallada (mínimo 10 caracteres)...',
         showCancelButton: true,
         confirmButtonText: 'Habilitar',
         cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#28a745',
         inputValidator: (value) => {
             if (!value || value.length < 10) {
                 return 'La justificación debe tener al menos 10 caracteres'
@@ -228,16 +296,54 @@ const HabilitarDependencia = async (e) => {
             if (datos.codigo == 1) {
                 await Swal.fire({
                     icon: "success",
-                    title: "¡Habilitada!",
+                    title: "¡Dependencia Habilitada!",
                     text: datos.mensaje,
                     showConfirmButton: true,
                 });
                 BuscarDependencias();
+            } else {
+                throw new Error(datos.mensaje);
             }
         } catch (error) {
-            Swal.fire('Error', 'No se pudo habilitar la dependencia', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo habilitar la dependencia: ' + error.message
+            });
         }
     }
+}
+
+const MostrarDetalles = async (e) => {
+    const id = e.currentTarget.dataset.id;
+    
+    try {
+        const respuesta = await fetch(`/ProyectoMDEP/mdep/obtenerPDFAPI?id=${id}`);
+        
+        if (respuesta.ok) {
+            const blob = await respuesta.blob();
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            window.URL.revokeObjectURL(url);
+        } else {
+            const datos = await respuesta.json();
+            Swal.fire({
+                icon: 'info',
+                title: 'Sin Justificación',
+                text: datos.mensaje || 'Esta dependencia no tiene PDF de justificación generado.'
+            });
+        }
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo obtener el documento de justificación.'
+        });
+    }
+}
+
+const VerUbicaciones = () => {
+    window.location.href = '/ProyectoMDEP/mdep/ubicaciones';
 }
 
 const obtenerTextoClase = (clase) => {
@@ -250,13 +356,11 @@ const obtenerTextoClase = (clase) => {
     return clases[clase] || clase;
 }
 
-console.log("=== INICIANDO DEBUG ===");
-console.log("FormDependencias:", FormDependencias);
-console.log("Tabla encontrada:", document.getElementById('TableDependencias'));
-
 const datatable = new DataTable('#TableDependencias', {
+    dom: 'lfrtip',
     language: lenguaje,
     data: [],
+    order: [[0, 'desc']],
     columns: [
         {
             title: 'No.',
@@ -290,14 +394,16 @@ const datatable = new DataTable('#TableDependencias', {
             title: 'Logo',
             data: 'dep_ruta_logo',
             render: (data) => {
-                return data ? '<span class="text-success">Sí</span>' : '<span class="text-muted">No</span>';
+                return data ? '<span class="badge bg-success">Sí</span>' : '<span class="text-muted">No asignado</span>';
             }
         },
         {
             title: 'Estado',
             data: 'dep_situacion',
             render: (data) => {
-                return data == 1 ? '<span class="badge bg-success">ACTIVO</span>' : '<span class="badge bg-danger">INACTIVO</span>';
+                return data == 1 ? 
+                    '<span class="badge bg-success">ACTIVO</span>' : 
+                    '<span class="badge bg-danger">INACTIVO</span>';
             }
         },
         {
@@ -324,7 +430,7 @@ const datatable = new DataTable('#TableDependencias', {
                          data-clase="${row.dep_clase}"
                          data-latitud="${row.dep_latitud || ''}"
                          data-longitud="${row.dep_longitud || ''}">
-                        Modificar 
+                        Modificar
                      </button>
                      ${btnEstado}
                      <button class='btn btn-primary btn-sm detalles mx-1' data-id="${data}">
@@ -335,9 +441,6 @@ const datatable = new DataTable('#TableDependencias', {
         }
     ]
 });
-
-console.log("=== DATATABLE INICIALIZADO ===");
-console.log("datatable:", datatable);
 
 if (BtnNuevaDependencia) {
     BtnNuevaDependencia.addEventListener('click', abrirModalNueva);
@@ -352,9 +455,7 @@ if (BtnModificar) {
 }
 
 if (BtnVerUbicaciones) {
-    BtnVerUbicaciones.addEventListener('click', () => {
-        Swal.fire('Info', 'Funcionalidad por implementar', 'info');
-    });
+    BtnVerUbicaciones.addEventListener('click', VerUbicaciones);
 }
 
 datatable.on('click', '.deshabilitar', DeshabilitarDependencia);
@@ -363,11 +464,6 @@ datatable.on('click', '.modificar', (e) => {
     const datos = e.currentTarget.dataset;
     abrirModalEditar(datos);
 });
+datatable.on('click', '.detalles', MostrarDetalles);
 
-datatable.on('click', '.detalles', (e) => {
-    const id = e.currentTarget.dataset.id;
-    Swal.fire('Info', `Ver detalles de dependencia ID: ${id}`, 'info');
-});
-
-console.log("=== EJECUTANDO BuscarDependencias AL FINAL ===");
 BuscarDependencias();

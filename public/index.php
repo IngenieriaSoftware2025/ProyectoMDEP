@@ -1,7 +1,6 @@
 <?php 
 require_once __DIR__ . '/../includes/app.php';
 
-
 use MVC\Router;
 use Controllers\AppController;
 use Controllers\MdepController;
@@ -11,6 +10,7 @@ $router->setBaseURL('/' . $_ENV['APP_NAME']);
 
 //rutas MDEP
 $router->get('/mdep', [MdepController::class,'renderizarPagina']);
+$router->get('/mdep/ubicaciones', [MdepController::class,'renderizarUbicaciones']); 
 $router->get('/mdep/testConexionAPI', [MdepController::class,'testConexionAPI']);
 $router->post('/mdep/guardarAPI', [MdepController::class,'guardarAPI']);
 $router->get('/mdep/buscarAPI', [MdepController::class,'buscarAPI']);

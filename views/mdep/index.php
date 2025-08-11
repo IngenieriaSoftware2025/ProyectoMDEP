@@ -31,7 +31,6 @@
     </div>
 </div>
 
-<script src="<?= asset('build/js/mdep/index.js') ?>"></script>
 
 <div class="modal fade" id="modalDependencia" tabindex="-1" aria-labelledby="modalDependenciaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -41,51 +40,69 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="FormDependencias">
+                <form id="FormDependencias" enctype="multipart/form-data">
                     <input type="hidden" id="dep_llave" name="dep_llave">
                     
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="dep_desc_lg" class="form-label">DESCRIPCIÓN LARGA *</label>
-                            <input type="text" class="form-control" id="dep_desc_lg" name="dep_desc_lg" placeholder="Ingrese la descripción larga" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="dep_desc_md" class="form-label">DESCRIPCIÓN MEDIANA *</label>
-                            <input type="text" class="form-control" id="dep_desc_md" name="dep_desc_md" placeholder="Ingrese la descripción mediana" required>
+                        <div class="col-md-12">
+                            <label for="dep_desc_lg" class="form-label">DESCRIPCIÓN LARGA <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="dep_desc_lg" name="dep_desc_lg" 
+                                   placeholder="Ingrese la descripción larga (mínimo 10 caracteres)" maxlength="100" required>
+                            <div class="form-text">Mínimo 10 caracteres, máximo 100</div>
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="dep_desc_ct" class="form-label">DESCRIPCIÓN CORTA *</label>
-                            <input type="text" class="form-control" id="dep_desc_ct" name="dep_desc_ct" placeholder="Descripción corta" required>
+                            <label for="dep_desc_md" class="form-label">DESCRIPCIÓN MEDIANA <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="dep_desc_md" name="dep_desc_md" 
+                                   placeholder="Descripción mediana (mínimo 5 caracteres)" maxlength="35" required>
+                            <div class="form-text">Mínimo 5 caracteres, máximo 35</div>
                         </div>
                         <div class="col-md-6">
-                            <label for="dep_clase" class="form-label">CLASE *</label>
+                            <label for="dep_desc_ct" class="form-label">DESCRIPCIÓN CORTA <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="dep_desc_ct" name="dep_desc_ct" 
+                                   placeholder="Descripción corta (mínimo 3 caracteres)" maxlength="15" required>
+                            <div class="form-text">Mínimo 3 caracteres, máximo 15</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="dep_clase" class="form-label">CLASE <span class="text-danger">*</span></label>
                             <select class="form-select" id="dep_clase" name="dep_clase" required>
                                 <option value="">Seleccionar clase</option>
                                 <option value="A">A - Administrativo</option>
                                 <option value="O">O - Operativo</option>
                                 <option value="D">D - Docencia</option>
+                                <option value="R">R - Rescate</option>
                             </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="dep_imagen" class="form-label">IMAGEN DE DEPENDENCIA</label>
+                            <input type="file" class="form-control" id="dep_imagen" name="dep_imagen" accept="image/*">
+                            <div class="form-text">Opcional - Formatos: JPG, PNG, GIF</div>
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="dep_latitud" class="form-label">LATITUD</label>
-                            <input type="text" class="form-control" id="dep_latitud" name="dep_latitud" placeholder="Ej: 14.6349">
+                            <input type="text" class="form-control" id="dep_latitud" name="dep_latitud" 
+                                   placeholder="Ej: 14.6349" pattern="^-?([0-8]?[0-9](\.[0-9]+)?|90(\.0+)?)$">
+                            <div class="form-text">Opcional - Coordenada de latitud</div>
                         </div>
                         <div class="col-md-6">
                             <label for="dep_longitud" class="form-label">LONGITUD</label>
-                            <input type="text" class="form-control" id="dep_longitud" name="dep_longitud" placeholder="Ej: -90.5069">
+                            <input type="text" class="form-control" id="dep_longitud" name="dep_longitud" 
+                                   placeholder="Ej: -90.5069" pattern="^-?((1[0-7][0-9])|([0-9]?[0-9]))(\.[0-9]+)?$|^-?180(\.0+)?$">
+                            <div class="form-text">Opcional - Coordenada de longitud</div>
                         </div>
                     </div>
 
-                    <div class="row mb-3">
+                    <div class="row">
                         <div class="col-12">
-                            <label for="dep_imagen" class="form-label">IMAGEN DE DEPENDENCIA</label>
-                            <input type="file" class="form-control" id="dep_imagen" name="dep_imagen" accept="image/*">
+                            <p class="text-muted"><span class="text-danger">*</span> Campos obligatorios</p>
                         </div>
                     </div>
                 </form>
