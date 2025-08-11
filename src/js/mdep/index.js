@@ -448,7 +448,7 @@ const datatable = new DataTable('#TableDependencias', {
                      </button>
                      ${btnEstado}
                      <button class='btn btn-primary btn-sm detalles mx-1' data-id="${data}">
-                        Detalles
+                        <i class="bi bi-file-earmark-pdf"></i>
                      </button>
                  </div>`;
             }

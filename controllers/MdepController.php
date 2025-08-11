@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 namespace Controllers;
 
 use phpseclib3\Net\SFTP;
@@ -36,7 +37,7 @@ class MdepController extends ActiveRecord
         $_POST['dep_precio'] = '1';
         $_POST['dep_ejto'] = 'N';
 
-        
+
         if (empty($_POST['dep_desc_lg']) || strlen($_POST['dep_desc_lg']) < 10) {
             http_response_code(400);
             echo json_encode(['codigo' => 0, 'mensaje' => 'La descripción larga debe tener más de 10 caracteres']);
@@ -221,94 +222,86 @@ class MdepController extends ActiveRecord
     }
 
     public static function deshabilitarAPI()
-    {
-        header('Content-Type: application/json');
+{
+    header('Content-Type: application/json');
+    
+    try {
+        $id = $_POST['dep_llave'] ?? null;
+        $justificacion = trim(htmlspecialchars($_POST['justificacion'] ?? ''));
 
-        $id = $_POST['dep_llave'];
-        $justificacion = trim(htmlspecialchars($_POST['justificacion']));
-
-        if (strlen($justificacion) < 10) {
-            http_response_code(400);
+        if (!$id || strlen($justificacion) < 10) {
             echo json_encode([
                 'codigo' => 0,
-                'mensaje' => 'La justificación debe tener al menos 10 caracteres'
+                'mensaje' => 'Datos incompletos'
             ]);
             exit;
         }
 
-        try {
-            /** @var Mdep $dependencia */
-            $dependencia = Mdep::find($id);
-            if (!$dependencia) {
-                http_response_code(400);
-                echo json_encode(['codigo' => 0, 'mensaje' => 'Dependencia no existe']);
-                return;
-            }
+        // Deshabilitar directamente sin PDF por ahora
+        $sql = "UPDATE informix.mdep SET dep_situacion = 0 WHERE dep_llave = ?";
+        $stmt = self::$db->prepare($sql);
+        $resultado = $stmt->execute([$id]);
 
-            $rutaPDF = self::generarPDF('DESHABILITACION', $dependencia->dep_desc_lg, $justificacion);
-
-
-            Mdep::DeshabilitarDependencia($id);
-
-            http_response_code(200);
+        if ($resultado && $stmt->rowCount() > 0) {
             echo json_encode([
                 'codigo' => 1,
-                'mensaje' => 'Dependencia deshabilitada correctamente',
-                'pdf_generado' => $rutaPDF
+                'mensaje' => 'Dependencia deshabilitada correctamente'
             ]);
-        } catch (Exception $e) {
-            http_response_code(400);
+        } else {
             echo json_encode([
                 'codigo' => 0,
                 'mensaje' => 'Error al deshabilitar'
             ]);
         }
+    } catch (Exception $e) {
+        echo json_encode([
+            'codigo' => 0,
+            'mensaje' => 'Error: ' . $e->getMessage()
+        ]);
     }
+    exit;
+}
 
-    public static function habilitarAPI()
-    {
-        header('Content-Type: application/json');
+public static function habilitarAPI()
+{
+    header('Content-Type: application/json');
+    
+    try {
+        $id = $_POST['dep_llave'] ?? null;
+        $justificacion = trim(htmlspecialchars($_POST['justificacion'] ?? ''));
 
-        $id = $_POST['dep_llave'];
-        $justificacion = trim(htmlspecialchars($_POST['justificacion']));
-
-        if (strlen($justificacion) < 10) {
-            http_response_code(400);
+        if (!$id || strlen($justificacion) < 10) {
             echo json_encode([
                 'codigo' => 0,
-                'mensaje' => 'La justificación debe tener al menos 10 caracteres'
+                'mensaje' => 'Datos incompletos'
             ]);
             exit;
         }
 
-        try {
-            /** @var Mdep $dependencia */
-            $dependencia = Mdep::find($id);
-            if (!$dependencia) {
-                http_response_code(400);
-                echo json_encode(['codigo' => 0, 'mensaje' => 'Dependencia no existe']);
-                return;
-            }
+        // Habilitar directamente sin PDF por ahora
+        $sql = "UPDATE informix.mdep SET dep_situacion = 1 WHERE dep_llave = ?";
+        $stmt = self::$db->prepare($sql);
+        $resultado = $stmt->execute([$id]);
 
-            $rutaPDF = self::generarPDF('HABILITACION', $dependencia->dep_desc_lg, $justificacion);
-
-
-            Mdep::HabilitarDependencia($id);
-
-            http_response_code(200);
+        if ($resultado && $stmt->rowCount() > 0) {
             echo json_encode([
                 'codigo' => 1,
-                'mensaje' => 'Dependencia habilitada correctamente',
-                'pdf_generado' => $rutaPDF
+                'mensaje' => 'Dependencia habilitada correctamente'
             ]);
-        } catch (Exception $e) {
-            http_response_code(400);
+        } else {
             echo json_encode([
                 'codigo' => 0,
                 'mensaje' => 'Error al habilitar'
             ]);
         }
+    } catch (Exception $e) {
+        echo json_encode([
+            'codigo' => 0,
+            'mensaje' => 'Error: ' . $e->getMessage()
+        ]);
     }
+    exit;
+}
 
     private static function subirImagen($archivo)
     {
@@ -388,8 +381,12 @@ class MdepController extends ActiveRecord
         }
 
         try {
+            // Usar consulta directa en lugar de Mdep::find()
+            $sql = "SELECT * FROM informix.mdep WHERE dep_llave = ?";
+            $stmt = self::$db->prepare($sql);
+            $stmt->execute([$id]);
+            $dependencia = $stmt->fetch();
 
-            $dependencia = Mdep::find($id);
             if (!$dependencia) {
                 http_response_code(404);
                 echo json_encode([
@@ -414,10 +411,8 @@ class MdepController extends ActiveRecord
                 return;
             }
 
-
             $archivos = $sftp->nlist($rutaRemotaPDF);
             $pdfEncontrado = null;
-
 
             foreach ($archivos as $archivo) {
                 if (strpos($archivo, (string)$id) !== false && strpos($archivo, '.pdf') !== false) {
@@ -427,7 +422,6 @@ class MdepController extends ActiveRecord
             }
 
             if (!$pdfEncontrado) {
-
                 foreach ($archivos as $archivo) {
                     if ((strpos($archivo, 'habilitacion_') !== false || strpos($archivo, 'deshabilitacion_') !== false)
                         && strpos($archivo, '.pdf') !== false
