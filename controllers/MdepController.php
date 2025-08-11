@@ -1,6 +1,7 @@
 <?php
 
-namespace Controllers; 
+namespace Controllers;
+
 use phpseclib3\Net\SFTP;
 use Exception;
 use Model\ActiveRecord;
@@ -160,14 +161,25 @@ class MdepController extends ActiveRecord
         $_POST['dep_ejto'] = 'N';
 
         try {
-            /** @var Mdep $dependencia */
-            $dependencia = Mdep::find($id);
-            if (!$dependencia) {
+            // Consulta directa para obtener los datos
+            $sql = "SELECT * FROM informix.mdep WHERE dep_llave = ?";
+            $stmt = self::$db->prepare($sql);
+            $stmt->execute([$id]);
+            $dependenciaData = $stmt->fetch();
+
+            if (!$dependenciaData) {
                 http_response_code(400);
                 echo json_encode(['codigo' => 0, 'mensaje' => 'Dependencia no existe']);
                 return;
             }
 
+            // Crear objeto Mdep con los datos existentes
+            $dependencia = new Mdep($dependenciaData);
+
+            // IMPORTANTE: Asegurarse que dep_llave esté asignado
+            $dependencia->dep_llave = $id; // ← ESTA LÍNEA ES CRUCIAL
+
+            // Manejar imagen
             if (isset($_FILES['dep_imagen']) && $_FILES['dep_imagen']['error'] === UPLOAD_ERR_OK) {
                 $rutaImagen = self::subirImagen($_FILES['dep_imagen']);
                 if ($rutaImagen) {
@@ -179,19 +191,32 @@ class MdepController extends ActiveRecord
                 $_POST['dep_ruta_logo'] = $dependencia->dep_ruta_logo;
             }
 
-            $dependencia->sincronizar($_POST);
-            $dependencia->actualizar();
+            // Actualizar propiedades
+            $dependencia->dep_desc_lg = $_POST['dep_desc_lg'];
+            $dependencia->dep_desc_md = $_POST['dep_desc_md'];
+            $dependencia->dep_desc_ct = $_POST['dep_desc_ct'];
+            $dependencia->dep_clase = $_POST['dep_clase'];
+            $dependencia->dep_latitud = $_POST['dep_latitud'] ?: null;
+            $dependencia->dep_longitud = $_POST['dep_longitud'] ?: null;
+            $dependencia->dep_ruta_logo = $_POST['dep_ruta_logo'];
 
-            http_response_code(200);
-            echo json_encode([
-                'codigo' => 1,
-                'mensaje' => 'Dependencia modificada correctamente'
-            ]);
+            $resultado = $dependencia->actualizar();
+
+            if ($resultado['resultado'] > 0) {
+                http_response_code(200);
+                echo json_encode([
+                    'codigo' => 1,
+                    'mensaje' => 'Dependencia modificada correctamente'
+                ]);
+            } else {
+                throw new Exception('No se pudo actualizar la dependencia');
+            }
         } catch (Exception $e) {
+            error_log('Error en modificarAPI: ' . $e->getMessage());
             http_response_code(400);
             echo json_encode([
                 'codigo' => 0,
-                'mensaje' => 'Error al modificar dependencia'
+                'mensaje' => 'Error al modificar dependencia: ' . $e->getMessage()
             ]);
         }
     }

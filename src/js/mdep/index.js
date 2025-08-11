@@ -163,6 +163,20 @@ const ModificarDependencia = async (event) => {
     }
 
     const body = new FormData(FormDependencias);
+    
+    // AGREGAR ESTA VERIFICACIÓN
+    console.log('=== DATOS ENVIANDO MODIFICAR ===');
+    for (let [key, value] of body.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+    
+    // FORZAR dep_llave si no existe
+    const depLlaveInput = document.getElementById('dep_llave');
+    if (depLlaveInput && depLlaveInput.value) {
+        body.set('dep_llave', depLlaveInput.value);
+        console.log('dep_llave forzado:', depLlaveInput.value);
+    }
+    
     const url = '/ProyectoMDEP/mdep/modificarAPI';
 
     try {

@@ -159,57 +159,62 @@ class Mdep extends ActiveRecord
         }
     }
 
-    public function actualizar()
-    {
-        if (!$this->dep_llave) {
-            throw new \Exception('No se puede actualizar sin dep_llave'); 
-        }
-
-        try {
-            $query = "UPDATE informix.mdep SET 
-                dep_desc_lg = ?, dep_desc_md = ?, dep_desc_ct = ?, dep_clase = ?, 
-                dep_precio = ?, dep_ejto = ?, dep_latitud = ?, dep_longitud = ?, 
-                dep_ruta_logo = ?, dep_situacion = ?
-                WHERE dep_llave = ?";
-
-            $stmt = self::$db->prepare($query);
-
-            $parametros = [
-                $this->dep_desc_lg,
-                $this->dep_desc_md,
-                $this->dep_desc_ct,
-                $this->dep_clase,
-                $this->dep_precio,
-                $this->dep_ejto,
-                $this->dep_latitud,
-                $this->dep_longitud,
-                $this->dep_ruta_logo,
-                $this->dep_situacion,
-                $this->dep_llave
-            ];
-
-            $resultado = $stmt->execute($parametros);
-
-            return ['resultado' => $stmt->rowCount()];
-        } catch (\Exception $e) { 
-            error_log('ERROR EN UPDATE: ' . $e->getMessage());
-            return [
-                'resultado' => 0,
-                'error' => $e->getMessage()
-            ];
-        }
+  public function actualizar() {
+    if(!$this->dep_llave) {
+        throw new \Exception('No se puede actualizar sin dep_llave');
     }
+    
+    try {
+        $query = "UPDATE informix.mdep SET 
+            dep_desc_lg = ?, dep_desc_md = ?, dep_desc_ct = ?, dep_clase = ?, 
+            dep_precio = ?, dep_ejto = ?, dep_latitud = ?, dep_longitud = ?, 
+            dep_ruta_logo = ?, dep_situacion = ?
+            WHERE dep_llave = ?";
+        
+        $stmt = self::$db->prepare($query);
+        
+        $parametros = [
+            $this->dep_desc_lg,
+            $this->dep_desc_md,
+            $this->dep_desc_ct,
+            $this->dep_clase,
+            $this->dep_precio,
+            $this->dep_ejto,
+            $this->dep_latitud,
+            $this->dep_longitud,
+            $this->dep_ruta_logo,
+            $this->dep_situacion,
+            $this->dep_llave
+        ];
+        
+        $resultado = $stmt->execute($parametros);
+        
+        return [
+            'resultado' => $stmt->rowCount(),
+            'id' => $this->dep_llave
+        ];
+        
+    } catch (\Exception $e) { 
+        error_log('Error en actualizar: ' . $e->getMessage());
+        return [
+            'resultado' => 0,
+            'error' => $e->getMessage()
+        ];
+    }
+}
 
     public static function DeshabilitarDependencia($id)
-    {
-        $sql = "UPDATE informix.mdep SET dep_situacion = 0 WHERE dep_llave = $id";
-        return self::SQL($sql);
-    }
+{
+    $sql = "UPDATE informix.mdep SET dep_situacion = 0 WHERE dep_llave = ?";
+    $stmt = self::$db->prepare($sql);
+    return $stmt->execute([$id]);
+}
 
-    public static function HabilitarDependencia($id)
-    {
-        $sql = "UPDATE informix.mdep SET dep_situacion = 1 WHERE dep_llave = $id";
-        return self::SQL($sql);
-    }
+public static function HabilitarDependencia($id)
+{
+    $sql = "UPDATE informix.mdep SET dep_situacion = 1 WHERE dep_llave = ?";
+    $stmt = self::$db->prepare($sql);
+    return $stmt->execute([$id]);
+}
 }
 

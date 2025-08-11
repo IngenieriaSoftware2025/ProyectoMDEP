@@ -47,7 +47,7 @@
                         <div class="col-md-12">
                             <label for="dep_desc_lg" class="form-label">DESCRIPCIÓN LARGA <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="dep_desc_lg" name="dep_desc_lg" 
-                                   placeholder="Ingrese la descripción larga (mínimo 10 caracteres)" maxlength="100" required>
+                                   placeholder="Ingrese la descripción larga (mínimo 10 caracteres)"  required>
                             <div class="form-text">Mínimo 10 caracteres, máximo 100</div>
                         </div>
                     </div>
