@@ -1,5 +1,4 @@
-<?php //HOLA XITU, ME CAES MAL PORQUE ERAS UNA ANTIGUA MALA INFLUENCIA, PERO TE RESPETO COMO DESARROLLADOR Y COMO PERSONA. SIGUE ASÍ, QUE ESTÁS HACIENDO UN GRAN TRABAJO EN TU PROYECTO!
-///// PROYECTO MDEEEEEEEEEEEEEEEEEEEP
+<?php 
 namespace Controllers;
 
 use phpseclib3\Net\SFTP;
@@ -37,7 +36,7 @@ class MdepController extends ActiveRecord
         $_POST['dep_precio'] = '1';
         $_POST['dep_ejto'] = 'N';
 
-        // VALIDACIONES
+        
         if (empty($_POST['dep_desc_lg']) || strlen($_POST['dep_desc_lg']) < 10) {
             http_response_code(400);
             echo json_encode(['codigo' => 0, 'mensaje' => 'La descripción larga debe tener más de 10 caracteres']);
