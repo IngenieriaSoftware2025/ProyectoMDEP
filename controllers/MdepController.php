@@ -356,98 +356,116 @@ class MdepController extends ActiveRecord
     }
 
     // MÉTODO CORREGIDO PARA DESHABILITAR CON PDF
-    public static function deshabilitarAPI()
-    {
-        header('Content-Type: application/json');
-        
-        $id = $_POST['dep_llave'] ?? null;
-        $justificacion = $_POST['justificacion'] ?? '';
+   public static function deshabilitarAPI()
+{
+    header('Content-Type: application/json');
 
-        if (!$id || strlen($justificacion) < 10) {
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Datos incompletos. La justificación debe tener al menos 10 caracteres.']);
-            die();
-        }
+    $id = $_POST['dep_llave'] ?? null;
+    $justificacion = $_POST['justificacion'] ?? '';
 
-        try {
-            // Obtener información de la dependencia
-            $sql = "SELECT dep_desc_lg FROM informix.mdep WHERE dep_llave = ?";
-            $stmt = self::$db->prepare($sql);
-            $stmt->execute([$id]);
-            $dependencia = $stmt->fetch();
-
-            if (!$dependencia) {
-                echo json_encode(['codigo' => 0, 'mensaje' => 'Dependencia no encontrada']);
-                die();
-            }
-
-            // Deshabilitar dependencia
-            $sql = "UPDATE informix.mdep SET dep_situacion = 0 WHERE dep_llave = " . intval($id);
-            self::$db->exec($sql);
-
-            // Generar PDF de justificación
-            $rutaPDF = self::generarPDFSeguro('DESHABILITACIÓN', $dependencia['dep_desc_lg'], $justificacion, $id);
-
-            $mensaje = 'Dependencia deshabilitada correctamente';
-            if ($rutaPDF) {
-                $mensaje .= ' - PDF generado: ' . basename($rutaPDF);
-            } else {
-                $mensaje .= ' - PDF no se pudo generar';
-            }
-            
-            echo json_encode(['codigo' => 1, 'mensaje' => $mensaje]);
-        } catch (Exception $e) {
-            error_log('Error en deshabilitarAPI: ' . $e->getMessage());
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al deshabilitar: ' . $e->getMessage()]);
-        }
+    if (!$id || strlen($justificacion) < 10) {
+        echo json_encode(['codigo' => 0, 'mensaje' => 'Datos incompletos']);
         die();
     }
 
-    // MÉTODO CORREGIDO PARA HABILITAR CON PDF
-    public static function habilitarAPI()
-    {
-        header('Content-Type: application/json');
-        
-        $id = $_POST['dep_llave'] ?? null;
-        $justificacion = $_POST['justificacion'] ?? '';
+    try {
+        // PASO 1: Deshabilitar
+        $sql = "UPDATE informix.mdep SET dep_situacion = 0 WHERE dep_llave = " . intval($id);
+        self::$db->exec($sql);
+        error_log("Dependencia $id deshabilitada exitosamente");
 
-        if (!$id || strlen($justificacion) < 10) {
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Datos incompletos. La justificación debe tener al menos 10 caracteres.']);
-            die();
-        }
+        // PASO 2: Obtener TODOS los datos para PDF
+        $sqlSelect = "SELECT * FROM informix.mdep WHERE dep_llave = " . intval($id);
+        $stmt = self::$db->query($sqlSelect);
+        $dependencia = $stmt->fetch();
 
-        try {
-            // Obtener información de la dependencia
-            $sql = "SELECT dep_desc_lg FROM informix.mdep WHERE dep_llave = ?";
-            $stmt = self::$db->prepare($sql);
-            $stmt->execute([$id]);
-            $dependencia = $stmt->fetch();
+        error_log("Datos encontrados: " . print_r($dependencia, true));
 
-            if (!$dependencia) {
-                echo json_encode(['codigo' => 0, 'mensaje' => 'Dependencia no encontrada']);
-                die();
-            }
-
-            // Habilitar dependencia
-            $sql = "UPDATE informix.mdep SET dep_situacion = 1 WHERE dep_llave = " . intval($id);
-            self::$db->exec($sql);
-
-            // Generar PDF de justificación
-            $rutaPDF = self::generarPDFSeguro('HABILITACIÓN', $dependencia['dep_desc_lg'], $justificacion, $id);
-
-            $mensaje = 'Dependencia habilitada correctamente';
-            if ($rutaPDF) {
-                $mensaje .= ' - PDF generado: ' . basename($rutaPDF);
-            } else {
-                $mensaje .= ' - PDF no se pudo generar';
-            }
+        // PASO 3: Generar PDF con CUALQUIER dato disponible
+        if ($dependencia) {
+            // Usar descripción larga, o mediana, o corta - lo que esté disponible
+            $nombreDep = $dependencia['dep_desc_lg'] ?: 
+                        ($dependencia['dep_desc_md'] ?: 
+                        ($dependencia['dep_desc_ct'] ?: "Dependencia ID: $id"));
             
-            echo json_encode(['codigo' => 1, 'mensaje' => $mensaje]);
-        } catch (Exception $e) {
-            error_log('Error en habilitarAPI: ' . $e->getMessage());
-            echo json_encode(['codigo' => 0, 'mensaje' => 'Error al habilitar: ' . $e->getMessage()]);
+            error_log("Nombre dependencia para PDF: $nombreDep");
+            
+            $rutaPDF = self::generarPDFSeguro('DESHABILITACION', $nombreDep, $justificacion, $id);
+            
+            if ($rutaPDF) {
+                error_log("PDF generado exitosamente: $rutaPDF");
+                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia deshabilitada - PDF: ' . basename($rutaPDF)]);
+            } else {
+                error_log("ERROR: No se pudo generar PDF");
+                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia deshabilitada (PDF falló)']);
+            }
+        } else {
+            error_log("ERROR: No se encontró registro con ID $id después del UPDATE");
+            echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia deshabilitada (registro no encontrado)']);
         }
+
+    } catch (Exception $e) {
+        error_log('Error en deshabilitarAPI: ' . $e->getMessage());
+        echo json_encode(['codigo' => 0, 'mensaje' => 'Error al deshabilitar: ' . $e->getMessage()]);
+    }
+    die();
+}
+
+public static function habilitarAPI()
+{
+    header('Content-Type: application/json');
+
+    $id = $_POST['dep_llave'] ?? null;
+    $justificacion = $_POST['justificacion'] ?? '';
+
+    if (!$id || strlen($justificacion) < 10) {
+        echo json_encode(['codigo' => 0, 'mensaje' => 'Datos incompletos']);
         die();
     }
+
+    try {
+        // PASO 1: Habilitar
+        $sql = "UPDATE informix.mdep SET dep_situacion = 1 WHERE dep_llave = " . intval($id);
+        self::$db->exec($sql);
+        error_log("Dependencia $id habilitada exitosamente");
+
+        // PASO 2: Obtener TODOS los datos para PDF
+        $sqlSelect = "SELECT * FROM informix.mdep WHERE dep_llave = " . intval($id);
+        $stmt = self::$db->query($sqlSelect);
+        $dependencia = $stmt->fetch();
+
+        error_log("Datos encontrados: " . print_r($dependencia, true));
+
+        // PASO 3: Generar PDF con CUALQUIER dato disponible
+        if ($dependencia) {
+            // Usar descripción larga, o mediana, o corta - lo que esté disponible
+            $nombreDep = $dependencia['dep_desc_lg'] ?: 
+                        ($dependencia['dep_desc_md'] ?: 
+                        ($dependencia['dep_desc_ct'] ?: "Dependencia ID: $id"));
+            
+            error_log("Nombre dependencia para PDF: $nombreDep");
+            
+            $rutaPDF = self::generarPDFSeguro('HABILITACION', $nombreDep, $justificacion, $id);
+            
+            if ($rutaPDF) {
+                error_log("PDF generado exitosamente: $rutaPDF");
+                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia habilitada - PDF: ' . basename($rutaPDF)]);
+            } else {
+                error_log("ERROR: No se pudo generar PDF");
+                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia habilitada (PDF falló)']);
+            }
+        } else {
+            error_log("ERROR: No se encontró registro con ID $id después del UPDATE");
+            echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia habilitada (registro no encontrado)']);
+        }
+
+    } catch (Exception $e) {
+        error_log('Error en habilitarAPI: ' . $e->getMessage());
+        echo json_encode(['codigo' => 0, 'mensaje' => 'Error al habilitar: ' . $e->getMessage()]);
+    }
+    die();
+}
+
 
     // MÉTODO PARA SERVIR IMÁGENES
     public static function servirImagenAPI()

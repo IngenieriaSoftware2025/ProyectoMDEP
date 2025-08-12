@@ -17,7 +17,7 @@ $router->post('/mdep/modificarAPI', [MdepController::class,'modificarAPI']);
 $router->post('/mdep/deshabilitarAPI', [MdepController::class,'deshabilitarAPI']);
 $router->post('/mdep/habilitarAPI', [MdepController::class,'habilitarAPI']);
 $router->get('/mdep/obtenerPDFAPI', [MdepController::class,'obtenerPDFAPI']); 
-$router->get('/mdep/servirImagenAPI', [MdepController::class,'servirImagenAPI']);
+$router->get('/mdep/servirImagenAPI', [MdepController::class,'servirImagenAPI']); 
 
 // Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
 $router->comprobarRutas();
