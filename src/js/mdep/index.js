@@ -49,7 +49,6 @@ const validarCamposObligatorios = () => {
     return true;
 };
 
-
 const abrirModalNueva = () => {
     document.getElementById('modalDependenciaLabel').textContent = 'Nueva Dependencia';
     FormDependencias.reset();
@@ -105,6 +104,12 @@ const GuardarDependencia = async (event) => {
 
     const body = new FormData(FormDependencias);
     body.delete('dep_llave');
+    
+    // Log para debug de archivo
+    const archivo = document.getElementById('dep_imagen').files[0];
+    if (archivo) {
+        console.log('📁 Archivo seleccionado:', archivo.name, 'Tamaño:', archivo.size);
+    }
     
     const url = '/ProyectoMDEP/mdep/guardarAPI';
 
@@ -342,6 +347,44 @@ const obtenerTextoClase = (clase) => {
     return clases[clase] || clase;
 }
 
+// FUNCIÓN MEJORADA PARA MOSTRAR IMAGEN
+const MostrarImagen = (ruta, descripcion) => {
+    if (!ruta) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin Logo',
+            text: 'Esta dependencia no tiene logo asignado.',
+            confirmButtonText: 'Entendido'
+        });
+        return;
+    }
+
+    const urlImagen = `/ProyectoMDEP/mdep/servirImagenAPI?ruta=${encodeURIComponent(ruta)}`;
+    
+    Swal.fire({
+        title: `Logo de ${descripcion}`,
+        imageUrl: urlImagen,
+        imageWidth: 400,
+        imageHeight: 300,
+        imageAlt: 'Logo de la dependencia',
+        showCloseButton: true,
+        showConfirmButton: false,
+        width: 500,
+        didOpen: () => {
+            // Manejar error de carga de imagen
+            const img = Swal.getPopup().querySelector('img');
+            img.onerror = () => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al cargar imagen',
+                    text: 'No se pudo cargar el logo de la dependencia.',
+                    confirmButtonText: 'Cerrar'
+                });
+            };
+        }
+    });
+}
+
 const MostrarPDF = async (e) => {
     const id = e.currentTarget.dataset.id;
     
@@ -422,6 +465,7 @@ const MostrarPDF = async (e) => {
     }
 }
 
+// DATATABLE MEJORADO CON COLUMNA DE IMAGEN
 const datatable = new DataTable('#TableDependencias', {
     dom: 'lfrtip',
     language: lenguaje,
@@ -459,8 +503,20 @@ const datatable = new DataTable('#TableDependencias', {
         {
             title: 'Logo',
             data: 'dep_ruta_logo',
-            render: (data) => {
-                return data ? '<span class="badge bg-success">Sí</span>' : '<span class="text-muted">No asignado</span>';
+            orderable: false,
+            searchable: false,
+            render: (data, type, row) => {
+                if (data && data.trim() !== '') {
+                    return `
+                        <button class="btn btn-sm btn-outline-primary ver-imagen" 
+                                data-ruta="${data}" 
+                                data-descripcion="${row.dep_desc_ct}"
+                                title="Ver logo">
+                            <i class="bi bi-image"></i> Ver Logo
+                        </button>`;
+                } else {
+                    return '<span class="text-muted">Sin logo</span>';
+                }
             }
         },
         {
@@ -479,10 +535,10 @@ const datatable = new DataTable('#TableDependencias', {
             orderable: false,
             render: (data, type, row) => {
                 const btnEstado = row.dep_situacion == 1 ? 
-                    `<button class='btn btn-danger btn-sm deshabilitar mx-1' data-id="${data}">
+                    `<button class='btn btn-danger btn-sm deshabilitar mx-1' data-id="${data}" title="Deshabilitar dependencia">
                         Deshabilitar
                     </button>` : 
-                    `<button class='btn btn-success btn-sm habilitar mx-1' data-id="${data}">
+                    `<button class='btn btn-success btn-sm habilitar mx-1' data-id="${data}" title="Habilitar dependencia">
                         Habilitar
                     </button>`;
                 
@@ -495,11 +551,12 @@ const datatable = new DataTable('#TableDependencias', {
                          data-desc-ct="${row.dep_desc_ct}"
                          data-clase="${row.dep_clase}"
                          data-latitud="${row.dep_latitud || ''}"
-                         data-longitud="${row.dep_longitud || ''}">
+                         data-longitud="${row.dep_longitud || ''}"
+                         title="Modificar dependencia">
                         Modificar
                      </button>
                      ${btnEstado}
-                     <button class='btn btn-primary btn-sm detalles mx-1' data-id="${data}">
+                     <button class='btn btn-primary btn-sm detalles mx-1' data-id="${data}" title="Ver justificación PDF">
                         <i class="bi bi-file-earmark-pdf"></i>
                      </button>
                  </div>`;
@@ -508,6 +565,7 @@ const datatable = new DataTable('#TableDependencias', {
     ]
 });
 
+// EVENT LISTENERS
 if (BtnNuevaDependencia) {
     BtnNuevaDependencia.addEventListener('click', abrirModalNueva);
 }
@@ -524,6 +582,7 @@ if (BtnVerUbicaciones) {
     BtnVerUbicaciones.addEventListener('click', VerUbicaciones);
 }
 
+// Event listeners para la tabla
 datatable.on('click', '.deshabilitar', DeshabilitarDependencia);
 datatable.on('click', '.habilitar', HabilitarDependencia);
 datatable.on('click', '.modificar', (e) => {
@@ -531,5 +590,11 @@ datatable.on('click', '.modificar', (e) => {
     abrirModalEditar(datos);
 });
 datatable.on('click', '.detalles', MostrarPDF);
+datatable.on('click', '.ver-imagen', (e) => {
+    const ruta = e.currentTarget.dataset.ruta;
+    const descripcion = e.currentTarget.dataset.descripcion;
+    MostrarImagen(ruta, descripcion);
+});
 
+// Cargar datos iniciales
 BuscarDependencias();
