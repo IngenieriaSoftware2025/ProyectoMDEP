@@ -328,34 +328,6 @@ const HabilitarDependencia = async (e) => {
     }
 }
 
-const MostrarDetalles = async (e) => {
-    const id = e.currentTarget.dataset.id;
-    
-    try {
-        const respuesta = await fetch(`/ProyectoMDEP/mdep/obtenerPDFAPI?id=${id}`);
-        
-        if (respuesta.ok) {
-            const blob = await respuesta.blob();
-            const url = window.URL.createObjectURL(blob);
-            window.open(url, '_blank');
-            window.URL.revokeObjectURL(url);
-        } else {
-            const datos = await respuesta.json();
-            Swal.fire({
-                icon: 'info',
-                title: 'Sin Justificación',
-                text: datos.mensaje || 'Esta dependencia no tiene PDF de justificación generado.'
-            });
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo obtener el documento de justificación.'
-        });
-    }
-}
-
 const VerUbicaciones = () => {
     window.location.href = '/ProyectoMDEP/mdep/ubicaciones';
 }
@@ -368,6 +340,86 @@ const obtenerTextoClase = (clase) => {
         'R': 'R - Rescate'
     };
     return clases[clase] || clase;
+}
+
+const MostrarPDF = async (e) => {
+    const id = e.currentTarget.dataset.id;
+    
+    console.log('Buscando PDF para dependencia:', id);
+    
+    try {
+        // Mostrar loading
+        Swal.fire({
+            title: 'Cargando PDF...',
+            text: 'Buscando documento de justificación',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        const respuesta = await fetch(`/ProyectoMDEP/mdep/obtenerPDFAPI?id=${id}`);
+        
+        // Cerrar loading
+        Swal.close();
+        
+        if (respuesta.ok) {
+            // Si la respuesta es exitosa, crear blob y abrir PDF
+            const blob = await respuesta.blob();
+            
+            if (blob.size > 0) {
+                const url = window.URL.createObjectURL(blob);
+                
+                // Abrir PDF en nueva ventana
+                const ventanaPDF = window.open(url, '_blank', 'width=1000,height=800');
+                
+                if (ventanaPDF) {
+                    // Limpiar URL después de un tiempo para liberar memoria
+                    setTimeout(() => {
+                        window.URL.revokeObjectURL(url);
+                    }, 10000);
+                    
+                    console.log('PDF abierto exitosamente');
+                } else {
+                    throw new Error('Las ventanas emergentes están bloqueadas');
+                }
+            } else {
+                throw new Error('El archivo PDF está vacío');
+            }
+        } else {
+            // Si hay error HTTP, intentar leer respuesta JSON
+            let errorMsg = 'No se pudo cargar el PDF';
+            
+            try {
+                const datos = await respuesta.json();
+                errorMsg = datos.mensaje || errorMsg;
+            } catch (parseError) {
+                console.error('Error parseando respuesta:', parseError);
+            }
+            
+            Swal.fire({
+                icon: 'info',
+                title: 'PDF No Disponible',
+                text: errorMsg,
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#3085d6'
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error al mostrar PDF:', error);
+        
+        Swal.close(); // Asegurar que se cierre el loading
+        
+        Swal.fire({
+            icon: 'error',
+            title: 'Error al Cargar PDF',
+            text: `No se pudo acceder al documento: ${error.message}`,
+            confirmButtonText: 'Cerrar',
+            confirmButtonColor: '#d33'
+        });
+    }
 }
 
 const datatable = new DataTable('#TableDependencias', {
@@ -478,6 +530,6 @@ datatable.on('click', '.modificar', (e) => {
     const datos = e.currentTarget.dataset;
     abrirModalEditar(datos);
 });
-datatable.on('click', '.detalles', MostrarDetalles);
+datatable.on('click', '.detalles', MostrarPDF);
 
 BuscarDependencias();
