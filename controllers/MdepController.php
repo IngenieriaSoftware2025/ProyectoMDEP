@@ -79,13 +79,13 @@ class MdepController extends ActiveRecord
                 // MANEJAR LOGO SI SE SUBIÓ
                 if (isset($_FILES['dep_imagen']) && $_FILES['dep_imagen']['error'] === UPLOAD_ERR_OK) {
                     $resultadoLogo = self::subirLogoRobusto($_FILES['dep_imagen'], $depId);
-                    
+
                     if ($resultadoLogo['exito']) {
                         // ACTUALIZAR LA DEPENDENCIA CON LA RUTA DEL LOGO
                         $sqlUpdate = "UPDATE informix.mdep SET dep_ruta_logo = ? WHERE dep_llave = ?";
                         $stmtUpdate = self::$db->prepare($sqlUpdate);
                         $stmtUpdate->execute([$resultadoLogo['ruta'], $depId]);
-                        
+
                         $mensajeCompleto .= ' - Logo subido: ' . basename($resultadoLogo['ruta']);
                     } else {
                         $mensajeCompleto .= ' - Logo no pudo subirse: ' . $resultadoLogo['mensaje'];
@@ -145,14 +145,14 @@ class MdepController extends ActiveRecord
 
             $dependencia = new Mdep($dependenciaData);
             $dependencia->dep_llave = $id;
-            
+
             $logoAnterior = $dependencia->dep_ruta_logo;
             $mensajeCompleto = 'Dependencia modificada correctamente';
 
             // MANEJAR LOGO SI SE SUBIÓ UNO NUEVO
             if (isset($_FILES['dep_imagen']) && $_FILES['dep_imagen']['error'] === UPLOAD_ERR_OK) {
                 $resultadoLogo = self::subirLogoRobusto($_FILES['dep_imagen'], $id, $logoAnterior);
-                
+
                 if ($resultadoLogo['exito']) {
                     $_POST['dep_ruta_logo'] = $resultadoLogo['ruta'];
                     $mensajeCompleto .= ' - Logo actualizado: ' . basename($resultadoLogo['ruta']);
@@ -292,7 +292,7 @@ class MdepController extends ActiveRecord
 
             // CARPETA BASE SEGÚN TU ESTRUCTURA
             $carpetaBase = '/upload/PruebaMDEP/';
-            
+
             // Verificar que existe la carpeta base
             if (!$conexionSftp->is_dir($carpetaBase)) {
                 if (!$conexionSftp->mkdir($carpetaBase, 0755, true)) {
@@ -323,9 +323,9 @@ class MdepController extends ActiveRecord
             // SUBIR ARCHIVO AL SFTP
             if ($conexionSftp->put($rutaCompletaSftp, $archivoTemporal, SFTP::SOURCE_LOCAL_FILE)) {
                 $conexionSftp->disconnect();
-                
+
                 error_log("SUCCESS: Logo subido exitosamente");
-                
+
                 return [
                     'exito' => true,
                     'mensaje' => 'Logo subido correctamente',
@@ -334,19 +334,18 @@ class MdepController extends ActiveRecord
             } else {
                 $errorSftp = $conexionSftp->getLastSFTPError();
                 $conexionSftp->disconnect();
-                
+
                 error_log("ERROR: Fallo al subir archivo - $errorSftp");
-                
+
                 return [
                     'exito' => false,
                     'mensaje' => 'Error al subir el logo al servidor: ' . $errorSftp,
                     'ruta' => null
                 ];
             }
-
         } catch (Exception $e) {
             error_log('EXCEPCIÓN en subirLogoRobusto: ' . $e->getMessage());
-            
+
             return [
                 'exito' => false,
                 'mensaje' => 'Error interno al procesar el logo: ' . $e->getMessage(),
@@ -356,122 +355,94 @@ class MdepController extends ActiveRecord
     }
 
     // MÉTODO CORREGIDO PARA DESHABILITAR CON PDF
-   public static function deshabilitarAPI()
+    
+public static function deshabilitarAPI()
 {
     header('Content-Type: application/json');
-
-    $id = $_POST['dep_llave'] ?? null;
-    $justificacion = $_POST['justificacion'] ?? '';
-
-    if (!$id || strlen($justificacion) < 10) {
-        echo json_encode(['codigo' => 0, 'mensaje' => 'Datos incompletos']);
-        die();
-    }
-
+    
     try {
-        // PASO 1: Deshabilitar
-        $sql = "UPDATE informix.mdep SET dep_situacion = 0 WHERE dep_llave = " . intval($id);
-        self::$db->exec($sql);
-        error_log("Dependencia $id deshabilitada exitosamente");
+        $id = $_POST['dep_llave'] ?? null;
+        $justificacion = trim(htmlspecialchars($_POST['justificacion'] ?? ''));
 
-        // PASO 2: Obtener TODOS los datos para PDF
-        $sqlSelect = "SELECT * FROM informix.mdep WHERE dep_llave = " . intval($id);
-        $stmt = self::$db->query($sqlSelect);
-        $dependencia = $stmt->fetch();
-
-        error_log("Datos encontrados: " . print_r($dependencia, true));
-
-        // PASO 3: Generar PDF con CUALQUIER dato disponible
-        if ($dependencia) {
-            // Usar descripción larga, o mediana, o corta - lo que esté disponible
-            $nombreDep = $dependencia['dep_desc_lg'] ?: 
-                        ($dependencia['dep_desc_md'] ?: 
-                        ($dependencia['dep_desc_ct'] ?: "Dependencia ID: $id"));
-            
-            error_log("Nombre dependencia para PDF: $nombreDep");
-            
-            $rutaPDF = self::generarPDFSeguro('DESHABILITACION', $nombreDep, $justificacion, $id);
-            
-            if ($rutaPDF) {
-                error_log("PDF generado exitosamente: $rutaPDF");
-                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia deshabilitada - PDF: ' . basename($rutaPDF)]);
-            } else {
-                error_log("ERROR: No se pudo generar PDF");
-                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia deshabilitada (PDF falló)']);
-            }
-        } else {
-            error_log("ERROR: No se encontró registro con ID $id después del UPDATE");
-            echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia deshabilitada (registro no encontrado)']);
+        if (!$id || strlen($justificacion) < 10) {
+            echo json_encode([
+                'codigo' => 0,
+                'mensaje' => 'Datos incompletos'
+            ]);
+            exit;
         }
 
+        // Deshabilitar directamente sin PDF por ahora
+        $sql = "UPDATE informix.mdep SET dep_situacion = 0 WHERE dep_llave = ?";
+        $stmt = self::$db->prepare($sql);
+        $resultado = $stmt->execute([$id]);
+
+        if ($resultado && $stmt->rowCount() > 0) {
+            echo json_encode([
+                'codigo' => 1,
+                'mensaje' => 'Dependencia deshabilitada correctamente'
+            ]);
+        } else {
+            echo json_encode([
+                'codigo' => 0,
+                'mensaje' => 'Error al deshabilitar'
+            ]);
+        }
     } catch (Exception $e) {
-        error_log('Error en deshabilitarAPI: ' . $e->getMessage());
-        echo json_encode(['codigo' => 0, 'mensaje' => 'Error al deshabilitar: ' . $e->getMessage()]);
+        echo json_encode([
+            'codigo' => 0,
+            'mensaje' => 'Error: ' . $e->getMessage()
+        ]);
     }
-    die();
+    exit;
 }
 
 public static function habilitarAPI()
 {
     header('Content-Type: application/json');
-
-    $id = $_POST['dep_llave'] ?? null;
-    $justificacion = $_POST['justificacion'] ?? '';
-
-    if (!$id || strlen($justificacion) < 10) {
-        echo json_encode(['codigo' => 0, 'mensaje' => 'Datos incompletos']);
-        die();
-    }
-
+    
     try {
-        // PASO 1: Habilitar
-        $sql = "UPDATE informix.mdep SET dep_situacion = 1 WHERE dep_llave = " . intval($id);
-        self::$db->exec($sql);
-        error_log("Dependencia $id habilitada exitosamente");
+        $id = $_POST['dep_llave'] ?? null;
+        $justificacion = trim(htmlspecialchars($_POST['justificacion'] ?? ''));
 
-        // PASO 2: Obtener TODOS los datos para PDF
-        $sqlSelect = "SELECT * FROM informix.mdep WHERE dep_llave = " . intval($id);
-        $stmt = self::$db->query($sqlSelect);
-        $dependencia = $stmt->fetch();
-
-        error_log("Datos encontrados: " . print_r($dependencia, true));
-
-        // PASO 3: Generar PDF con CUALQUIER dato disponible
-        if ($dependencia) {
-            // Usar descripción larga, o mediana, o corta - lo que esté disponible
-            $nombreDep = $dependencia['dep_desc_lg'] ?: 
-                        ($dependencia['dep_desc_md'] ?: 
-                        ($dependencia['dep_desc_ct'] ?: "Dependencia ID: $id"));
-            
-            error_log("Nombre dependencia para PDF: $nombreDep");
-            
-            $rutaPDF = self::generarPDFSeguro('HABILITACION', $nombreDep, $justificacion, $id);
-            
-            if ($rutaPDF) {
-                error_log("PDF generado exitosamente: $rutaPDF");
-                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia habilitada - PDF: ' . basename($rutaPDF)]);
-            } else {
-                error_log("ERROR: No se pudo generar PDF");
-                echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia habilitada (PDF falló)']);
-            }
-        } else {
-            error_log("ERROR: No se encontró registro con ID $id después del UPDATE");
-            echo json_encode(['codigo' => 1, 'mensaje' => 'Dependencia habilitada (registro no encontrado)']);
+        if (!$id || strlen($justificacion) < 10) {
+            echo json_encode([
+                'codigo' => 0,
+                'mensaje' => 'Datos incompletos'
+            ]);
+            exit;
         }
 
-    } catch (Exception $e) {
-        error_log('Error en habilitarAPI: ' . $e->getMessage());
-        echo json_encode(['codigo' => 0, 'mensaje' => 'Error al habilitar: ' . $e->getMessage()]);
-    }
-    die();
-}
+        // Habilitar directamente sin PDF por ahora
+        $sql = "UPDATE informix.mdep SET dep_situacion = 1 WHERE dep_llave = ?";
+        $stmt = self::$db->prepare($sql);
+        $resultado = $stmt->execute([$id]);
 
+        if ($resultado && $stmt->rowCount() > 0) {
+            echo json_encode([
+                'codigo' => 1,
+                'mensaje' => 'Dependencia habilitada correctamente'
+            ]);
+        } else {
+            echo json_encode([
+                'codigo' => 0,
+                'mensaje' => 'Error al habilitar'
+            ]);
+        }
+    } catch (Exception $e) {
+        echo json_encode([
+            'codigo' => 0,
+            'mensaje' => 'Error: ' . $e->getMessage()
+        ]);
+    }
+    exit;
+}
 
     // MÉTODO PARA SERVIR IMÁGENES
     public static function servirImagenAPI()
     {
         $ruta = $_GET['ruta'] ?? '';
-        
+
         if (empty($ruta)) {
             http_response_code(400);
             echo json_encode(['error' => 'Ruta no especificada']);
@@ -519,9 +490,8 @@ public static function habilitarAPI()
             header('Content-Type: ' . $tipoMime);
             header('Content-Length: ' . strlen($contenido));
             header('Cache-Control: public, max-age=3600');
-            
-            echo $contenido;
 
+            echo $contenido;
         } catch (Exception $e) {
             error_log('Error en servirImagenAPI: ' . $e->getMessage());
             http_response_code(500);
@@ -533,7 +503,7 @@ public static function habilitarAPI()
     public static function obtenerPDFAPI()
     {
         header('Content-Type: application/json');
-        
+
         $id = $_GET['id'] ?? null;
 
         if (!$id) {
@@ -585,9 +555,8 @@ public static function habilitarAPI()
             header('Content-Type: application/pdf');
             header('Content-Disposition: inline; filename="justificacion_dep_' . $id . '.pdf"');
             header('Content-Length: ' . strlen($contenidoPDF));
-            
-            echo $contenidoPDF;
 
+            echo $contenidoPDF;
         } catch (Exception $e) {
             error_log('Error en obtenerPDFAPI: ' . $e->getMessage());
             http_response_code(500);
